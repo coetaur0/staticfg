@@ -120,6 +120,7 @@ class CFGBuilder(ast.NodeVisitor):
         Add a statement to a block.
 
         Args:
+            block: A Block object to which a statement must be added.
             statement: An AST node representing the statement that must be
                        added to the current block.
         """
@@ -229,20 +230,23 @@ class CFGBuilder(ast.NodeVisitor):
         if_block = self.new_block()
         self.add_exit(self.current_block, if_block, node.test)
 
-        # New block for the code after the if-else.
-        afterif_block = self.new_block()
-
+        else_label = invert(node.test)
         # New block for the body of the else if there is an else clause.
         if len(node.orelse) != 0:
             else_block = self.new_block()
-            self.add_exit(self.current_block, else_block, invert(node.test))
+            self.add_exit(self.current_block, else_block, else_label)
+            else_label = ""
             self.current_block = else_block
             # Visit the children in the body of the else to populate the block.
             for child in node.orelse:
                 self.visit(child)
-            self.add_exit(self.current_block, afterif_block)
+
+        # Block for the code after the if-else.
+        if self.current_block.is_empty():
+            afterif_block = self.current_block
         else:
-            self.add_exit(self.current_block, afterif_block, invert(node.test))
+            afterif_block = self.new_block()
+            self.add_exit(self.current_block, afterif_block, else_label)
 
         # Visit children to populate the if block.
         self.current_block = if_block
@@ -321,4 +325,5 @@ class CFGBuilder(ast.NodeVisitor):
 
     def visit_Return(self, node):
         self.add_statement(self.current_block, node)
+        # TODO: handle returns with code afterwards.
         self.cfg.finalblocks.append(self.current_block)
