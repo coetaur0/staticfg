@@ -17,7 +17,7 @@ class Block(object):
     a list of Links that represent control flow jumps.
     """
 
-    __slots__ = ["id", "statements", "func_calls", "exits"]
+    __slots__ = ["id", "statements", "func_calls", "predecessors", "exits"]
 
     def __init__(self, id):
         # Id of the block.
@@ -27,7 +27,9 @@ class Block(object):
         # Calls to functions inside the block (represents context switches to
         # some functions' CFGs).
         self.func_calls = []
-        # Links to other blocks.
+        # Links to predecessors in a control flow graph.
+        self.predecessors = []
+        # Links to the next blocks in a control flow graph.
         self.exits = []
 
     def at(self):
@@ -139,8 +141,6 @@ class CFG(object):
         self.async = async
         # Entry block of the CFG.
         self.entryblock = None
-        # Number of blocks in the CFG.
-        self.nblocks = 0
         # Final blocks of the CFG.
         self.finalblocks = []
         # Sub-CFGs for functions defined inside the current CFG.
@@ -149,19 +149,16 @@ class CFG(object):
     def __str__(self):
         return "CFG for {}".format(self.name)
 
-    def __repr__(self):
-        return "{}, with {} blocks".format(str(self), self.nblocks)
-
     def _visit_blocks(self, graph, block, visited=[], labels=True):
         # Don't visit blocks twice.
         if block.id in visited:
             return
 
+        # If 'labels' is set to true, show the source code of the blocks in the
+        # visual representation of the CFG.
         nodelabel = None
         if labels:
             nodelabel = block.get_source()
-        if nodelabel == "" and block in self.finalblocks:
-            nodelabel = "exit\n"
 
         graph.node(str(block.id), label=nodelabel)
         visited.append(block.id)

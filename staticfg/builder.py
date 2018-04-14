@@ -40,6 +40,24 @@ def invert(node):
     return inverse_node
 
 
+def merge_exitcases(exit1, exit2):
+    """
+    Merge the exitcases of two Links.
+
+    Args:
+        exit1: The exitcase of a Link object.
+        exit2: Another exitcase to merge with exit1.
+
+    Returns:
+        The merged exitcases.
+    """
+    if exit1:
+        if exit2:
+            return ast.BoolOp(ast.And(), values=[exit1, exit2])
+        return exit1
+    return exit2
+
+
 class CFGBuilder(ast.NodeVisitor):
     """
     Control flow graph builder.
@@ -72,6 +90,7 @@ class CFGBuilder(ast.NodeVisitor):
         self.cfg.entryblock = self.current_block
         # Actual building of the CFG is done here.
         self.visit(tree)
+        self.clean_cfg(self.cfg.entryblock)
         return self.cfg
 
     def build_from_src(self, name, src):
@@ -138,6 +157,7 @@ class CFGBuilder(ast.NodeVisitor):
         """
         newlink = Link(block, nextblock, exitcase)
         block.exits.append(newlink)
+        nextblock.predecessors.append(newlink)
 
     def new_loopguard(self):
         """
@@ -180,6 +200,40 @@ class CFGBuilder(ast.NodeVisitor):
                                                               async,
                                                               self.current_id)
         self.current_id = func_builder.current_id + 1
+
+    def clean_cfg(self, block, visited=[]):
+        """
+        Remove the useless (empty) blocks from a CFG.
+
+        Args:
+            block: The block from which to start traversing the CFG to clean
+                   it.
+            visited: A list of blocks that already have been visited by
+                     clean_cfg (recursive function).
+        """
+        # Don't visit blocks twice.
+        if block in visited:
+            return
+        visited.append(block)
+
+        # Empty blocks are removed from the CFG.
+        if block.is_empty():
+            to_visit = []
+            for pred in block.predecessors:
+                for exit in block.exits:
+                    self.add_exit(pred.source, exit.target,
+                                  merge_exitcases(pred.exitcase,
+                                                  exit.exitcase))
+                    exit.target.predecessors.remove(exit)
+                pred.source.exits.remove(pred)
+
+            block.predecessors = []
+            for exit in block.exits:
+                self.clean_cfg(exit.target, visited)
+            block.exits = []
+        else:
+            for exit in block.exits:
+                self.clean_cfg(exit.target, visited)
 
     # ---------- AST Node visitor methods ---------- #
     def visit_Expr(self, node):
@@ -230,23 +284,21 @@ class CFGBuilder(ast.NodeVisitor):
         if_block = self.new_block()
         self.add_exit(self.current_block, if_block, node.test)
 
-        else_label = invert(node.test)
+        # Create a block for the code after the if-else.
+        afterif_block = self.new_block()
+
         # New block for the body of the else if there is an else clause.
         if len(node.orelse) != 0:
             else_block = self.new_block()
-            self.add_exit(self.current_block, else_block, else_label)
+            self.add_exit(self.current_block, else_block, invert(node.test))
             else_label = ""
             self.current_block = else_block
             # Visit the children in the body of the else to populate the block.
             for child in node.orelse:
                 self.visit(child)
-
-        # Block for the code after the if-else.
-        if self.current_block.is_empty():
-            afterif_block = self.current_block
+            self.add_exit(self.current_block, afterif_block)
         else:
-            afterif_block = self.new_block()
-            self.add_exit(self.current_block, afterif_block, else_label)
+            self.add_exit(self.current_block, afterif_block, invert(node.test))
 
         # Visit children to populate the if block.
         self.current_block = if_block
