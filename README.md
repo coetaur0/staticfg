@@ -2,8 +2,8 @@
 Python3 control flow graph generator
 
 StatiCFG is a module that allows you to produce control flow graphs (CFGs) for Python 3 programs. The CFGs it generates
-can be easily visualised with graphviz and used for control flow analysis. They cannot, however, be used for symbolical 
-execution (hence the name **StatiC**FG: the CFGs produced by the module are purely "static").
+can be easily visualised with graphviz and used for control flow analysis. They are in particular meant to be used for the static
+analysis of programs, hence the name **StatiC**FG.
 
 ## Installation
 
