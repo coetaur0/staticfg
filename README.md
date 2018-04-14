@@ -7,7 +7,7 @@ analysis of programs, hence the name **StatiC**FG.
 
 ## Installation
 
-To install StatiCFG, simply clone this repository and run the command `pip3 install --upgrade .` from inside it.
+To install StatiCFG, simply clone this repository and run the command `pip3 install --upgrade .` inside of it.
 
 ## Usage
 
