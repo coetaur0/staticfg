@@ -332,7 +332,7 @@ class CFGBuilder(ast.NodeVisitor):
         self.current_block = afterwhile_block
 
     def visit_For(self, node):
-        loop_guard = self.new_loop_block()
+        loop_guard = self.new_loopguard()
         self.current_block = loop_guard
         self.add_statement(self.current_block, node)
 
