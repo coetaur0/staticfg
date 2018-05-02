@@ -243,8 +243,10 @@ class CFGBuilder(ast.NodeVisitor):
     def visit_Call(self, node):
         func = node.func
         if type(func) == ast.Attribute:
-            func = func.value
-        self.current_block.func_calls.append(func.id)
+            func_name = "{}.{}".format(func.value.id, func.attr)
+        else:
+            func_name = func.id
+        self.current_block.func_calls.append(func_name)
 
     def visit_Assign(self, node):
         self.add_statement(self.current_block, node)
@@ -375,7 +377,20 @@ class CFGBuilder(ast.NodeVisitor):
         self.add_statement(self.current_block, node)
         self.new_functionCFG(node, async=True)
 
+    def visit_Await(self, node):
+        afterawait_block = self.new_block()
+        self.add_exit(self.current_block, afterawait_block)
+        self.generic_visit(node)
+        self.current_block = afterawait_block
+
     def visit_Return(self, node):
         self.add_statement(self.current_block, node)
-        # TODO: handle returns with code afterwards.
         self.cfg.finalblocks.append(self.current_block)
+        # Continue in a new block but without any jump to it -> all code after
+        # the return statement will not be included in the CFG.
+        self.current_block = self.new_block()
+
+    def visit_Yield(self, node):
+        afteryield_block = self.new_block()
+        self.add_exit(self.current_block, afteryield_block)
+        self.current_block = afteryield_block

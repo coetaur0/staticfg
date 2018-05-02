@@ -74,11 +74,25 @@ class Block(object):
         for statement in self.statements:
             if type(statement) in [ast.If, ast.For, ast.While]:
                 src += (astor.to_source(statement)).split('\n')[0] + "\n"
-            elif type(statement) == ast.FunctionDef:
+            elif type(statement) == ast.FunctionDef or\
+                 type(statement) == ast.AsyncFunctionDef:
                 src += (astor.to_source(statement)).split('\n')[0] + "...\n"
             else:
                 src += astor.to_source(statement)
         return src
+
+    def get_calls(self):
+        """
+        Get a string containing the calls to other functions inside the block.
+
+        Returns:
+            A string containing the names of the functions called inside the
+            block.
+        """
+        txt = ""
+        for func_name in self.func_calls:
+            txt += func_name + '\n'
+        return txt
 
 
 class Link(object):
@@ -124,13 +138,12 @@ class Link(object):
 
 class CFG(object):
     """
-    'Static' control flow graph (CFG).
+    Control flow graph (CFG).
 
     A control flow graph is composed of basic blocks and links between them
     representing control flow jumps. It has a unique entry block and several
     possible 'final' blocks (blocks with no exits representing the end of the
-    CFG). Here the produced CFG are referred to as 'static' because they cannot
-    be used for symbolical execution, only for control flow analysis.
+    CFG).
     """
 
     def __init__(self, name, async=False):
@@ -162,6 +175,17 @@ class CFG(object):
 
         graph.node(str(block.id), label=nodelabel)
         visited.append(block.id)
+
+        # Show the block's function calls in a node.
+        if block.func_calls:
+            calls_node = str(block.id)+"_calls"
+            calls_label = None
+            if labels:
+                calls_label = block.get_calls()
+            graph.node(calls_node, label=calls_label,
+                       _attributes={'shape': 'box'})
+            graph.edge(str(block.id), calls_node, label="calls",
+                       _attributes={'style': 'dashed'})
 
         # Recursively visit all the blocks of the CFG.
         for exit in block.exits:
