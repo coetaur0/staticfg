@@ -162,26 +162,21 @@ class CFG(object):
     def __str__(self):
         return "CFG for {}".format(self.name)
 
-    def _visit_blocks(self, graph, block, visited=[], labels=True):
+    def _visit_blocks(self, graph, block, visited=[], calls=True):
         # Don't visit blocks twice.
         if block.id in visited:
             return
 
-        # If 'labels' is set to true, show the source code of the blocks in the
-        # visual representation of the CFG.
-        nodelabel = None
-        if labels:
-            nodelabel = block.get_source()
+        nodelabel = block.get_source()
 
         graph.node(str(block.id), label=nodelabel)
         visited.append(block.id)
 
         # Show the block's function calls in a node.
-        if block.func_calls:
+        if calls and block.func_calls:
             calls_node = str(block.id)+"_calls"
             calls_label = None
-            if labels:
-                calls_label = block.get_calls()
+            calls_label = block.get_calls()
             graph.node(calls_node, label=calls_label,
                        _attributes={'shape': 'box'})
             graph.edge(str(block.id), calls_node, label="calls",
@@ -189,26 +184,25 @@ class CFG(object):
 
         # Recursively visit all the blocks of the CFG.
         for exit in block.exits:
-            self._visit_blocks(graph, exit.target, visited, labels=labels)
-            edgelabel = None
-            if labels:
-                edgelabel = exit.get_exitcase()
+            self._visit_blocks(graph, exit.target, visited, calls=calls)
+            edgelabel = exit.get_exitcase()
             graph.edge(str(block.id), str(exit.target.id), label=edgelabel)
 
-    def _build_visual(self, format='pdf'):
+    def _build_visual(self, format='pdf', calls=True):
         graph = gv.Digraph(name='cluster'+self.name, format=format,
                            graph_attr={'label': self.name})
-        self._visit_blocks(graph, self.entryblock, visited=[])
+        self._visit_blocks(graph, self.entryblock, visited=[], calls=calls)
 
         # Build the subgraphs for the function definitions in the CFG and add
         # them to the graph.
         for subcfg in self.functioncfgs:
-            subgraph = self.functioncfgs[subcfg]._build_visual(format=format)
+            subgraph = self.functioncfgs[subcfg]._build_visual(format=format,
+                                                               calls=calls)
             graph.subgraph(subgraph)
 
         return graph
 
-    def build_visual(self, filepath, format, show=True):
+    def build_visual(self, filepath, format, calls=True, show=True):
         """
         Build a visualisation of the CFG with graphviz and output it in a DOT
         file.
@@ -220,5 +214,5 @@ class CFG(object):
             show: A boolean indicating whether to automatically open the output
                   file after building the visualisation.
         """
-        graph = self._build_visual(format)
+        graph = self._build_visual(format, calls)
         graph.render(filepath, view=show)
