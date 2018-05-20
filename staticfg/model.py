@@ -32,14 +32,6 @@ class Block(object):
         # Links to the next blocks in a control flow graph.
         self.exits = []
 
-    def at(self):
-        """
-        Get the line number of the first statement of the block in the program.
-        """
-        if self.statements and self.statements[0].lineno >= 0:
-            return self.statements[0].lineno
-        return None
-
     def __str__(self):
         if self.statements:
             return "block:{}@{}".format(self.id, self.at())
@@ -52,6 +44,14 @@ class Block(object):
             txt += ", ".join([ast.dump(node) for node in self.statements])
             txt += "]"
         return txt
+
+    def at(self):
+        """
+        Get the line number of the first statement of the block in the program.
+        """
+        if self.statements and self.statements[0].lineno >= 0:
+            return self.statements[0].lineno
+        return None
 
     def is_empty(self):
         """
@@ -107,6 +107,8 @@ class Link(object):
     __slots__ = ["source", "target", "exitcase"]
 
     def __init__(self, source, target, exitcase=None):
+        assert type(source) == Block, "Source of a link must be a block"
+        assert type(target) == Block, "Target of a link must be a block"
         # Block from which the control flow jump was made.
         self.source = source
         # Target block of the control flow jump.
@@ -147,6 +149,8 @@ class CFG(object):
     """
 
     def __init__(self, name, async=False):
+        assert type(name) == str, "Name of a CFG must be a string"
+        assert type(async) == bool, "Async must be a boolean value"
         # Name of the function or module being represented.
         self.name = name
         # Type of function represented by the CFG (sync or async). A Python

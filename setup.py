@@ -9,6 +9,7 @@ setup(name='staticfg',
       author_email='aurelien.coet19@gmail.com',
       description='Control flow graph generator for Python3 programs',
       packages=['staticfg'],
+      test_suite='tests',
       install_requires=[
         'astor',
         'graphviz',
