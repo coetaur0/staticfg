@@ -391,6 +391,7 @@ class CFGBuilder(ast.NodeVisitor):
         self.current_block = self.new_block()
 
     def visit_Yield(self, node):
+        self.cfg.async = True
         afteryield_block = self.new_block()
         self.add_exit(self.current_block, afteryield_block)
         self.current_block = afteryield_block
