@@ -1,13 +1,14 @@
 # StatiCFG
 Python3 control flow graph generator
 
-StatiCFG is a module that allows you to produce control flow graphs (CFGs) for Python 3 programs. The CFGs it generates
+StatiCFG is a package that can be used to produce control flow graphs (CFGs) for Python 3 programs. The CFGs it generates
 can be easily visualised with graphviz and used for control flow analysis. This analysis is actually the main purpose of
-the module, hence the name **StatiC**FG.
+the module, hence the name of **StatiC**FG.
 
 ## Installation
 
-To install StatiCFG, simply clone this repository and run the command `pip3 install --upgrade .` inside of it.
+To install StatiCFG, simply clone this repository and run the command `pip3 install --upgrade .` inside of it. The package is 
+also available on PyPi and can be directly installed with the command `pip3 install staticfg`.
 
 ## Usage
 
@@ -31,3 +32,7 @@ cfg.build_visual('exampleCFG', 'pdf')
 
 The first paramter of `build_visual` is the desired name for the DOT file produced by the method, and the second one is the
 format to use for the visualisation.
+
+The *build_cfg.py* script present in the */examples* folder of this repository can be used to directly generate the CFG of some 
+Python program and visualise it. To do so, simply call the script with the command `python3 build_cfg.py 
+<path_to_some_source>`.
