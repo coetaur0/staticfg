@@ -102,7 +102,7 @@ class TestCFG(unittest.TestCase):
 
         cfg = CFG('cfg', False)
         self.assertEqual(cfg.name, 'cfg')
-        self.assertFalse(cfg.async)
+        self.assertFalse(cfg.asynchr)
         self.assertEqual(cfg.entryblock, None)
         self.assertEqual(cfg.finalblocks, [])
         self.assertEqual(cfg.functioncfgs, {})

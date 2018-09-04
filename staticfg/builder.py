@@ -67,7 +67,7 @@ class CFGBuilder(ast.NodeVisitor):
     """
 
     # ---------- CFG building methods ---------- #
-    def build(self, name, tree, async=False, entry_id=0):
+    def build(self, name, tree, asynchr=False, entry_id=0):
         """
         Build a CFG from an AST.
 
@@ -83,7 +83,7 @@ class CFGBuilder(ast.NodeVisitor):
         Returns:
             The CFG produced from the AST.
         """
-        self.cfg = CFG(name, async=async)
+        self.cfg = CFG(name, asynchr=asynchr)
         # Tracking of the current block while building the CFG.
         self.current_id = entry_id
         self.current_block = self.new_block()
@@ -180,7 +180,7 @@ class CFGBuilder(ast.NodeVisitor):
 
         return loopguard
 
-    def new_functionCFG(self, node, async=False):
+    def new_functionCFG(self, node, asynchr=False):
         """
         Create a new sub-CFG for a function definition and add it to the
         function CFGs of the CFG being built.
@@ -197,7 +197,7 @@ class CFGBuilder(ast.NodeVisitor):
         func_builder = CFGBuilder()
         self.cfg.functioncfgs[node.name] = func_builder.build(node.name,
                                                               func_body,
-                                                              async,
+                                                              asynchr,
                                                               self.current_id)
         self.current_id = func_builder.current_id + 1
 
@@ -241,11 +241,17 @@ class CFGBuilder(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Call(self, node):
+        def visit_func(node):
+            if type(node) == ast.Name:
+                return node.id
+            elif type(node) == ast.Attribute:
+                # Recursion on series of calls to attributes.
+                func_name = visit_func(node.value)
+                func_name += "." + node.attr
+                return func_name
+
         func = node.func
-        if type(func) == ast.Attribute:
-            func_name = "{}.{}".format(func.value.id, func.attr)
-        else:
-            func_name = func.id
+        func_name = visit_func(func)
         self.current_block.func_calls.append(func_name)
 
     def visit_Assign(self, node):
@@ -293,7 +299,6 @@ class CFGBuilder(ast.NodeVisitor):
         if len(node.orelse) != 0:
             else_block = self.new_block()
             self.add_exit(self.current_block, else_block, invert(node.test))
-            else_label = ""
             self.current_block = else_block
             # Visit the children in the body of the else to populate the block.
             for child in node.orelse:
@@ -371,11 +376,11 @@ class CFGBuilder(ast.NodeVisitor):
 
     def visit_FunctionDef(self, node):
         self.add_statement(self.current_block, node)
-        self.new_functionCFG(node, async=False)
+        self.new_functionCFG(node, asynchr=False)
 
     def visit_AsyncFunctionDef(self, node):
         self.add_statement(self.current_block, node)
-        self.new_functionCFG(node, async=True)
+        self.new_functionCFG(node, asynchr=True)
 
     def visit_Await(self, node):
         afterawait_block = self.new_block()
@@ -391,7 +396,7 @@ class CFGBuilder(ast.NodeVisitor):
         self.current_block = self.new_block()
 
     def visit_Yield(self, node):
-        self.cfg.async = True
+        self.cfg.asynchr = True
         afteryield_block = self.new_block()
         self.add_exit(self.current_block, afteryield_block)
         self.current_block = afteryield_block
