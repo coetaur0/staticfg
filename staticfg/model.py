@@ -148,14 +148,14 @@ class CFG(object):
     CFG).
     """
 
-    def __init__(self, name, async=False):
+    def __init__(self, name, asynchr=False):
         assert type(name) == str, "Name of a CFG must be a string"
-        assert type(async) == bool, "Async must be a boolean value"
+        assert type(asynchr) == bool, "Async must be a boolean value"
         # Name of the function or module being represented.
         self.name = name
         # Type of function represented by the CFG (sync or async). A Python
         # program is considered as a synchronous function (main).
-        self.async = async
+        self.asynchr = asynchr
         # Entry block of the CFG.
         self.entryblock = None
         # Final blocks of the CFG.
