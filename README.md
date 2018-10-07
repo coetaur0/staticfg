@@ -5,6 +5,22 @@ StatiCFG is a package that can be used to produce control flow graphs (CFGs) for
 can be easily visualised with graphviz and used for static analysis. This analysis is actually the main purpose of
 the module, hence the name of **StatiC**FG.
 
+Below is an example of a piece of code that generates the Fibonacci sequence and the CFG produced for it with StatiCFG.
+
+```python
+def fib():
+    a, b = 0, 1
+    while True:
+        yield a
+        a, b = b, a + b
+
+fib_gen = fib()
+for _ in range(10):
+    next(fib_gen)
+```
+
+![Fibonacci CFG](assets/example_cfg.png)
+
 ## Installation
 
 To install StatiCFG, simply clone this repository and run the command `pip3 install --upgrade .` inside of it. The package is 
