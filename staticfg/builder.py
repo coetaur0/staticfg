@@ -218,14 +218,19 @@ class CFGBuilder(ast.NodeVisitor):
 
         # Empty blocks are removed from the CFG.
         if block.is_empty():
-            to_visit = []
             for pred in block.predecessors:
                 for exit in block.exits:
                     self.add_exit(pred.source, exit.target,
                                   merge_exitcases(pred.exitcase,
                                                   exit.exitcase))
-                    exit.target.predecessors.remove(exit)
-                pred.source.exits.remove(pred)
+                    # Check if the exit hasn't yet been removed from
+                    # the predecessors of the target block.
+                    if exit in exit.target.predecessors:
+                        exit.target.predecessors.remove(exit)
+                # Check if the predecessor hasn't yet been removed from
+                # the exits of the source block.
+                if pred in pred.source.exits:
+                    pred.source.exits.remove(pred)
 
             block.predecessors = []
             for exit in block.exits:
