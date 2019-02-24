@@ -278,11 +278,11 @@ class CFGBuilder(ast.NodeVisitor):
     def visit_Assert(self, node):
         self.add_statement(self.current_block, node)
         # New block for the case in which the assertion 'fails'.
-        failblock = self.new_block
+        failblock = self.new_block()
         self.add_exit(self.current_block, failblock, invert(node.test))
         # If the assertion fails, the current flow ends, so the fail block is a
         # final block of the CFG.
-        self.cfg.final_blocks.append(failblock)
+        self.cfg.finalblocks.append(failblock)
         # If the assertion is True, continue the flow of the program.
         successblock = self.new_block()
         self.add_exit(self.current_block, successblock, node.test)
