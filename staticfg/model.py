@@ -231,9 +231,9 @@ class CFG(object):
 
         while to_visit:
             block = to_visit.pop(0)
-            visited.add(block.id)
+            visited.add(block)
             for exit_ in block.exits:
-                if exit_.target.id in visited:
+                if exit_.target in visited or exit_.target in to_visit:
                     continue
                 to_visit.append(exit_.target)
             yield block
