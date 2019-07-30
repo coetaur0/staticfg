@@ -1,6 +1,7 @@
 import unittest
 import ast
 from staticfg.model import *
+from staticfg.builder import CFGBuilder
 
 
 class TestBlock(unittest.TestCase):
@@ -111,6 +112,24 @@ class TestCFG(unittest.TestCase):
         cfg = CFG('cfg', False)
         self.assertEqual(str(cfg), 'CFG for cfg')
 
+    def test_iter(self):
+        src = """\
+def fib():
+    a, b = 0, 1
+    while True:
+        yield a
+        a, b = b, a + b
+"""
+        cfg = CFGBuilder().build_from_src("fib", src)
+        expected_block_sources = [
+            "def fib():...\n",
+            "a, b = 0, 1\n",
+            "while True:\n",
+            "yield a\n",
+            "a, b = b, a + b\n"
+        ]
+        for actual_block, expected_src in zip(cfg, expected_block_sources):
+            self.assertEqual(actual_block.get_source(), expected_src)
 
 if __name__ == "__main__":
     unittest.main()
