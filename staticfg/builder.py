@@ -254,6 +254,10 @@ class CFGBuilder(ast.NodeVisitor):
                 func_name = visit_func(node.value)
                 func_name += "." + node.attr
                 return func_name
+            elif type(node) == ast.Str:
+                return node.s
+            elif type(node) == ast.Subscript:
+                return node.value.id
 
         func = node.func
         func_name = visit_func(func)
