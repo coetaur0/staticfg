@@ -179,8 +179,7 @@ class CFG(object):
         # Show the block's function calls in a node.
         if calls and block.func_calls:
             calls_node = str(block.id)+"_calls"
-            calls_label = None
-            calls_label = block.get_calls()
+            calls_label = block.get_calls().strip()
             graph.node(calls_node, label=calls_label,
                        _attributes={'shape': 'box'})
             graph.edge(str(block.id), calls_node, label="calls",
@@ -189,7 +188,7 @@ class CFG(object):
         # Recursively visit all the blocks of the CFG.
         for exit in block.exits:
             self._visit_blocks(graph, exit.target, visited, calls=calls)
-            edgelabel = exit.get_exitcase()
+            edgelabel = exit.get_exitcase().strip()
             graph.edge(str(block.id), str(exit.target.id), label=edgelabel)
 
     def _build_visual(self, format='pdf', calls=True):
