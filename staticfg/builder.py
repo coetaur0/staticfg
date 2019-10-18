@@ -347,7 +347,7 @@ class CFGBuilder(ast.NodeVisitor):
         # Skip edge for while True:
         if not (isinstance(inverted_test, ast.NameConstant) and \
                 inverted_test.value == False):
-            self.add_exit(self.current_block, afterwhile_block, )
+            self.add_exit(self.current_block, afterwhile_block, inverted_test)
 
         # Populate the while block.
         self.current_block = while_block
