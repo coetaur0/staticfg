@@ -312,7 +312,9 @@ class CFGBuilder(ast.NodeVisitor):
             # Visit the children in the body of the else to populate the block.
             for child in node.orelse:
                 self.visit(child)
-            self.add_exit(self.current_block, afterif_block)
+            # If encountered a break, exit will have already been added
+            if not self.current_block.exits:
+                self.add_exit(self.current_block, afterif_block)
         else:
             self.add_exit(self.current_block, afterif_block, invert(node.test))
 
@@ -320,7 +322,8 @@ class CFGBuilder(ast.NodeVisitor):
         self.current_block = if_block
         for child in node.body:
             self.visit(child)
-        self.add_exit(self.current_block, afterif_block)
+        if not self.current_block.exits:
+            self.add_exit(self.current_block, afterif_block)
 
         # Continue building the CFG in the after-if block.
         self.current_block = afterif_block
@@ -336,6 +339,7 @@ class CFGBuilder(ast.NodeVisitor):
 
         # New block for the case where the test in the while is False.
         afterwhile_block = self.new_block()
+        self.after_loop_block = afterwhile_block
         self.add_exit(self.current_block, afterwhile_block, invert(node.test))
 
         # Populate the while block.
@@ -346,6 +350,7 @@ class CFGBuilder(ast.NodeVisitor):
 
         # Continue building the CFG in the after-while block.
         self.current_block = afterwhile_block
+        self.after_loop_block = None
 
     def visit_For(self, node):
         loop_guard = self.new_loopguard()
@@ -371,7 +376,8 @@ class CFGBuilder(ast.NodeVisitor):
 
     def visit_Break(self, node):
         # TODO
-        pass
+        assert getattr(self, "after_loop_block", False)
+        self.add_exit(self.current_block, self.after_loop_block)
 
     def visit_Continue(self, node):
         # TODO
