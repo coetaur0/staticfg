@@ -32,6 +32,9 @@ def invert(node):
         op = type(node.ops[0])
         inverse_node = ast.Compare(left=node.left, ops=[inverse[op]()],
                                    comparators=node.comparators)
+    elif isinstance(node, ast.BinOp) and type(node.op) in inverse:
+        op = type(node.op)
+        inverse_node = ast.BinOp(node.left, inverse[op](), node.right)
     elif type(node) == ast.NameConstant and node.value in [True, False]:
         inverse_node = ast.NameConstant(value=not node.value)
     else:
@@ -342,8 +345,8 @@ class CFGBuilder(ast.NodeVisitor):
         self.after_loop_block = afterwhile_block
         inverted_test = invert(node.test)
         # Skip edge for while True:
-        if not isinstance(inverted_test, ast.NameConstant) and \
-                inverted_test.value == False:
+        if not (isinstance(inverted_test, ast.NameConstant) and \
+                inverted_test.value == False):
             self.add_exit(self.current_block, afterwhile_block, )
 
         # Populate the while block.
