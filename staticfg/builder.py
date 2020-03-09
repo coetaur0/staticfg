@@ -342,6 +342,7 @@ class CFGBuilder(ast.NodeVisitor):
 
         # New block for the case where the test in the while is False.
         afterwhile_block = self.new_block()
+        prev_after_loop_block = getattr(self, "after_loop_block", None)
         self.after_loop_block = afterwhile_block
         inverted_test = invert(node.test)
         # Skip edge for while True:
@@ -357,7 +358,7 @@ class CFGBuilder(ast.NodeVisitor):
 
         # Continue building the CFG in the after-while block.
         self.current_block = afterwhile_block
-        self.after_loop_block = None
+        self.after_loop_block = prev_after_loop_block
 
     def visit_For(self, node):
         loop_guard = self.new_loopguard()
