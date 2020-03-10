@@ -131,5 +131,28 @@ def fib():
         for actual_block, expected_src in zip(cfg, expected_block_sources):
             self.assertEqual(actual_block.get_source(), expected_src)
 
+    def test_break(self):
+        src = """\
+def foo():
+    i = 0
+    while True:
+        i += 1
+        if i == 3:
+            break
+    return i
+"""
+        cfg = CFGBuilder().build_from_src("foo", src)
+        expected_block_sources = [
+            "def foo():...\n",
+            "i = 0\n",
+            "while True:\n",
+            "i += 1\n"
+            "if i == 3:\n",
+            "",
+            "return i\n"
+        ]
+        for actual_block, expected_src in zip(cfg, expected_block_sources):
+            self.assertEqual(actual_block.get_source(), expected_src)
+
 if __name__ == "__main__":
     unittest.main()

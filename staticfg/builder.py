@@ -69,6 +69,10 @@ class CFGBuilder(ast.NodeVisitor):
     a program's AST and iteratively build the corresponding CFG.
     """
 
+    def __init__(self):
+        super().__init__()
+        self.after_loop_block = None
+
     # ---------- CFG building methods ---------- #
     def build(self, name, tree, asynchr=False, entry_id=0):
         """
@@ -342,7 +346,7 @@ class CFGBuilder(ast.NodeVisitor):
 
         # New block for the case where the test in the while is False.
         afterwhile_block = self.new_block()
-        prev_after_loop_block = getattr(self, "after_loop_block", None)
+        prev_after_loop_block = self.after_loop_block
         self.after_loop_block = afterwhile_block
         inverted_test = invert(node.test)
         # Skip edge for while True:
@@ -383,8 +387,7 @@ class CFGBuilder(ast.NodeVisitor):
         self.current_block = afterfor_block
 
     def visit_Break(self, node):
-        # TODO
-        assert getattr(self, "after_loop_block", False)
+        assert self.after_loop_block is not None, "Found break not inside loop"
         self.add_exit(self.current_block, self.after_loop_block)
 
     def visit_Continue(self, node):
