@@ -139,6 +139,10 @@ def foo():
         i += 1
         if i == 3:
             break
+    for j in range(3):
+        i += j
+        if j == 2:
+            break
     return i
 """
         cfg = CFGBuilder().build_from_src("foo", src)
@@ -149,6 +153,35 @@ def foo():
             "i += 1\n"
             "if i == 3:\n",
             "",
+            "for j in range(3):\n",
+            "i += j\n"
+            "if j == 2:\n",
+            "return i\n",
+            "",
+        ]
+        for actual_block, expected_src in zip(cfg, expected_block_sources):
+            self.assertEqual(actual_block.get_source(), expected_src)
+
+    def test_break_in_main_body(self):
+        src = """\
+def foo():
+    i = 0
+    while True:
+        i += 1
+        break
+    for j in range(3):
+        i += j
+        break
+    return i
+"""
+        cfg = CFGBuilder().build_from_src("foo", src)
+        expected_block_sources = [
+            "def foo():...\n",
+            "i = 0\n",
+            "while True:\n",
+            "i += 1\n",
+            "for j in range(3):\n",
+            "i += j\n",
             "return i\n"
         ]
         for actual_block, expected_src in zip(cfg, expected_block_sources):

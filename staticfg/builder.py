@@ -71,7 +71,7 @@ class CFGBuilder(ast.NodeVisitor):
 
     def __init__(self):
         super().__init__()
-        self.after_loop_block = None
+        self.after_loop_block_stack = []
 
     # ---------- CFG building methods ---------- #
     def build(self, name, tree, asynchr=False, entry_id=0):
@@ -346,10 +346,9 @@ class CFGBuilder(ast.NodeVisitor):
 
         # New block for the case where the test in the while is False.
         afterwhile_block = self.new_block()
-        prev_after_loop_block = self.after_loop_block
-        self.after_loop_block = afterwhile_block
+        self.after_loop_block_stack.append(afterwhile_block)
         inverted_test = invert(node.test)
-        # Skip edge for while True:
+        # Skip shortcut loop edge if while True:
         if not (isinstance(inverted_test, ast.NameConstant) and \
                 inverted_test.value == False):
             self.add_exit(self.current_block, afterwhile_block, inverted_test)
@@ -358,11 +357,13 @@ class CFGBuilder(ast.NodeVisitor):
         self.current_block = while_block
         for child in node.body:
             self.visit(child)
-        self.add_exit(self.current_block, loop_guard)
+        if not self.current_block.exits:
+            # Did not encounter a break statement, loop back
+            self.add_exit(self.current_block, loop_guard)
 
         # Continue building the CFG in the after-while block.
         self.current_block = afterwhile_block
-        self.after_loop_block = prev_after_loop_block
+        self.after_loop_block_stack.pop()
 
     def visit_For(self, node):
         loop_guard = self.new_loopguard()
@@ -376,19 +377,22 @@ class CFGBuilder(ast.NodeVisitor):
         # Block of code after the for loop.
         afterfor_block = self.new_block()
         self.add_exit(self.current_block, afterfor_block)
+        self.after_loop_block_stack.append(afterfor_block)
         self.current_block = for_block
 
         # Populate the body of the for loop.
         for child in node.body:
             self.visit(child)
-        self.add_exit(self.current_block, loop_guard)
+        if not self.current_block.exits:
+            # Did not encounter a break
+            self.add_exit(self.current_block, loop_guard)
 
         # Continue building the CFG in the after-for block.
         self.current_block = afterfor_block
 
     def visit_Break(self, node):
-        assert self.after_loop_block is not None, "Found break not inside loop"
-        self.add_exit(self.current_block, self.after_loop_block)
+        assert len(self.after_loop_block_stack), "Found break not inside loop"
+        self.add_exit(self.current_block, self.after_loop_block_stack[-1])
 
     def visit_Continue(self, node):
         # TODO
