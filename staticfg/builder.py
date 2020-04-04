@@ -32,6 +32,9 @@ def invert(node):
         op = type(node.ops[0])
         inverse_node = ast.Compare(left=node.left, ops=[inverse[op]()],
                                    comparators=node.comparators)
+    elif isinstance(node, ast.BinOp) and type(node.op) in inverse:
+        op = type(node.op)
+        inverse_node = ast.BinOp(node.left, inverse[op](), node.right)
     elif type(node) == ast.NameConstant and node.value in [True, False]:
         inverse_node = ast.NameConstant(value=not node.value)
     else:
@@ -65,6 +68,10 @@ class CFGBuilder(ast.NodeVisitor):
     A control flow graph builder is an ast.NodeVisitor that can walk through
     a program's AST and iteratively build the corresponding CFG.
     """
+
+    def __init__(self):
+        super().__init__()
+        self.after_loop_block_stack = []
 
     # ---------- CFG building methods ---------- #
     def build(self, name, tree, asynchr=False, entry_id=0):
@@ -312,7 +319,9 @@ class CFGBuilder(ast.NodeVisitor):
             # Visit the children in the body of the else to populate the block.
             for child in node.orelse:
                 self.visit(child)
-            self.add_exit(self.current_block, afterif_block)
+            # If encountered a break, exit will have already been added
+            if not self.current_block.exits:
+                self.add_exit(self.current_block, afterif_block)
         else:
             self.add_exit(self.current_block, afterif_block, invert(node.test))
 
@@ -320,7 +329,8 @@ class CFGBuilder(ast.NodeVisitor):
         self.current_block = if_block
         for child in node.body:
             self.visit(child)
-        self.add_exit(self.current_block, afterif_block)
+        if not self.current_block.exits:
+            self.add_exit(self.current_block, afterif_block)
 
         # Continue building the CFG in the after-if block.
         self.current_block = afterif_block
@@ -336,16 +346,24 @@ class CFGBuilder(ast.NodeVisitor):
 
         # New block for the case where the test in the while is False.
         afterwhile_block = self.new_block()
-        self.add_exit(self.current_block, afterwhile_block, invert(node.test))
+        self.after_loop_block_stack.append(afterwhile_block)
+        inverted_test = invert(node.test)
+        # Skip shortcut loop edge if while True:
+        if not (isinstance(inverted_test, ast.NameConstant) and \
+                inverted_test.value == False):
+            self.add_exit(self.current_block, afterwhile_block, inverted_test)
 
         # Populate the while block.
         self.current_block = while_block
         for child in node.body:
             self.visit(child)
-        self.add_exit(self.current_block, loop_guard)
+        if not self.current_block.exits:
+            # Did not encounter a break statement, loop back
+            self.add_exit(self.current_block, loop_guard)
 
         # Continue building the CFG in the after-while block.
         self.current_block = afterwhile_block
+        self.after_loop_block_stack.pop()
 
     def visit_For(self, node):
         loop_guard = self.new_loopguard()
@@ -359,19 +377,22 @@ class CFGBuilder(ast.NodeVisitor):
         # Block of code after the for loop.
         afterfor_block = self.new_block()
         self.add_exit(self.current_block, afterfor_block)
+        self.after_loop_block_stack.append(afterfor_block)
         self.current_block = for_block
 
         # Populate the body of the for loop.
         for child in node.body:
             self.visit(child)
-        self.add_exit(self.current_block, loop_guard)
+        if not self.current_block.exits:
+            # Did not encounter a break
+            self.add_exit(self.current_block, loop_guard)
 
         # Continue building the CFG in the after-for block.
         self.current_block = afterfor_block
 
     def visit_Break(self, node):
-        # TODO
-        pass
+        assert len(self.after_loop_block_stack), "Found break not inside loop"
+        self.add_exit(self.current_block, self.after_loop_block_stack[-1])
 
     def visit_Continue(self, node):
         # TODO
