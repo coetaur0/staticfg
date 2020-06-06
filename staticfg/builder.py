@@ -389,6 +389,8 @@ class CFGBuilder(ast.NodeVisitor):
 
         # Continue building the CFG in the after-for block.
         self.current_block = afterfor_block
+        # Popping the current after loop stack,taking care of errors in case of nested for loops
+        self.after_loop_block_stack.pop()
 
     def visit_Break(self, node):
         assert len(self.after_loop_block_stack), "Found break not inside loop"
