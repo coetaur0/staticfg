@@ -72,6 +72,7 @@ class CFGBuilder(ast.NodeVisitor):
     def __init__(self):
         super().__init__()
         self.after_loop_block_stack = []
+        self.curr_loop_guard_stack = []
 
     # ---------- CFG building methods ---------- #
     def build(self, name, tree, asynchr=False, entry_id=0):
@@ -339,7 +340,7 @@ class CFGBuilder(ast.NodeVisitor):
         loop_guard = self.new_loopguard()
         self.current_block = loop_guard
         self.add_statement(self.current_block, node)
-
+        self.curr_loop_guard_stack.append(loop_guard)
         # New block for the case where the test in the while is True.
         while_block = self.new_block()
         self.add_exit(self.current_block, while_block, node.test)
@@ -364,12 +365,13 @@ class CFGBuilder(ast.NodeVisitor):
         # Continue building the CFG in the after-while block.
         self.current_block = afterwhile_block
         self.after_loop_block_stack.pop()
+        self.curr_loop_guard_stack.pop()
 
     def visit_For(self, node):
         loop_guard = self.new_loopguard()
         self.current_block = loop_guard
         self.add_statement(self.current_block, node)
-
+        self.curr_loop_guard_stack.append(loop_guard)
         # New block for the body of the for-loop.
         for_block = self.new_block()
         self.add_exit(self.current_block, for_block, node.iter)
@@ -391,15 +393,15 @@ class CFGBuilder(ast.NodeVisitor):
         self.current_block = afterfor_block
         # Popping the current after loop stack,taking care of errors in case of nested for loops
         self.after_loop_block_stack.pop()
+        self.curr_loop_guard_stack.pop()
 
     def visit_Break(self, node):
         assert len(self.after_loop_block_stack), "Found break not inside loop"
         self.add_exit(self.current_block, self.after_loop_block_stack[-1])
 
     def visit_Continue(self, node):
-        # TODO
-        pass
-
+        assert len(self.curr_loop_guard_stack), "Found continue outside loop"
+        self.add_exit(self.current_block,self.curr_loop_guard_stack[-1])
     def visit_Import(self, node):
         self.add_statement(self.current_block, node)
 
