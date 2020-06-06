@@ -241,11 +241,13 @@ class CFGBuilder(ast.NodeVisitor):
                     pred.source.exits.remove(pred)
 
             block.predecessors = []
-            for exit in block.exits:
+            # as the exits may be modified during the recursive call, it is unsafe to iterate on block.exits
+            # Created a copy of block.exits before calling clean cfg , and iterate over it instead.
+            for exit in block.exits[:]:
                 self.clean_cfg(exit.target, visited)
             block.exits = []
         else:
-            for exit in block.exits:
+            for exit in block.exits[:]:
                 self.clean_cfg(exit.target, visited)
 
     # ---------- AST Node visitor methods ---------- #
