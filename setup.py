@@ -2,7 +2,7 @@ from setuptools import setup
 
 
 setup(name='staticfg',
-      version='0.9.4',
+      version='0.9.5',
       url='https://github.com/coetaur0/staticfg',
       license='Apache 2',
       author='Aurelien Coet',
