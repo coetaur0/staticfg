@@ -27,7 +27,7 @@ class TestBlock(unittest.TestCase):
         tree = ast.parse("a = 1")
         block.statements.append(tree.body[0])
         self.assertEqual(repr(block), "block:1@1 with 0 exits, body=[\
-Assign(targets=[Name(id='a', ctx=Store())], value=Num(n=1))]")
+Assign(targets=[Name(id='a', ctx=Store())], value=Constant(value=1, kind=None), type_comment=None)]")
 
     def test_at(self):
         block = Block(1)
@@ -152,7 +152,6 @@ def foo():
             "while True:\n",
             "i += 1\n"
             "if i == 3:\n",
-            "",
             "for j in range(3):\n",
             "i += j\n"
             "if j == 2:\n",
