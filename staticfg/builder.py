@@ -6,6 +6,13 @@ Control flow graph builder.
 
 import ast
 from .model import Block, Link, CFG
+import sys
+
+
+def is_py38_or_higher():
+    if sys.version_info.major == 3 and sys.version_info.minor >= 8:
+        return True
+    return False
 
 
 def invert(node):
@@ -29,6 +36,8 @@ def invert(node):
                ast.In: ast.NotIn,
                ast.NotIn: ast.In}
 
+    nameconstant_type = ast.Constant if is_py38_or_higher() else ast.NameConstant
+
     if type(node) == ast.Compare:
         op = type(node.ops[0])
         inverse_node = ast.Compare(left=node.left, ops=[inverse[op]()],
@@ -36,8 +45,8 @@ def invert(node):
     elif isinstance(node, ast.BinOp) and type(node.op) in inverse:
         op = type(node.op)
         inverse_node = ast.BinOp(node.left, inverse[op](), node.right)
-    elif type(node) == ast.Constant and node.value in [True, False]:
-        inverse_node = ast.Constant(value=not node.value)
+    elif type(node) == nameconstant_type and node.value in [True, False]:
+        inverse_node = nameconstant_type(value=not node.value)
     else:
         inverse_node = ast.UnaryOp(op=ast.Not(), operand=node)
 
@@ -70,7 +79,7 @@ class CFGBuilder(ast.NodeVisitor):
     a program's AST and iteratively build the corresponding CFG.
     """
 
-    def __init__(self, separate = False):
+    def __init__(self, separate=False):
         super().__init__()
         self.after_loop_block_stack = []
         self.curr_loop_guard_stack = []
@@ -411,7 +420,8 @@ class CFGBuilder(ast.NodeVisitor):
 
     def visit_Continue(self, node):
         assert len(self.curr_loop_guard_stack), "Found continue outside loop"
-        self.add_exit(self.current_block,self.curr_loop_guard_stack[-1])
+        self.add_exit(self.current_block, self.curr_loop_guard_stack[-1])
+
     def visit_Import(self, node):
         self.add_statement(self.current_block, node)
 
