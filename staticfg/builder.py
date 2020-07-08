@@ -2,9 +2,17 @@
 Control flow graph builder.
 """
 # Aurelien Coet, 2018.
+# Modified by Andrei Nacu, 2020
 
 import ast
 from .model import Block, Link, CFG
+import sys
+
+
+def is_py38_or_higher():
+    if sys.version_info.major == 3 and sys.version_info.minor >= 8:
+        return True
+    return False
 
 
 def invert(node):
@@ -28,6 +36,8 @@ def invert(node):
                ast.In: ast.NotIn,
                ast.NotIn: ast.In}
 
+    nameconstant_type = ast.Constant if is_py38_or_higher() else ast.NameConstant
+
     if type(node) == ast.Compare:
         op = type(node.ops[0])
         inverse_node = ast.Compare(left=node.left, ops=[inverse[op]()],
@@ -35,8 +45,8 @@ def invert(node):
     elif isinstance(node, ast.BinOp) and type(node.op) in inverse:
         op = type(node.op)
         inverse_node = ast.BinOp(node.left, inverse[op](), node.right)
-    elif type(node) == ast.NameConstant and node.value in [True, False]:
-        inverse_node = ast.NameConstant(value=not node.value)
+    elif type(node) == nameconstant_type and node.value in [True, False]:
+        inverse_node = nameconstant_type(value=not node.value)
     else:
         inverse_node = ast.UnaryOp(op=ast.Not(), operand=node)
 
@@ -69,10 +79,12 @@ class CFGBuilder(ast.NodeVisitor):
     a program's AST and iteratively build the corresponding CFG.
     """
 
-    def __init__(self):
+    def __init__(self, separate=False):
         super().__init__()
         self.after_loop_block_stack = []
         self.curr_loop_guard_stack = []
+        self.current_block = None
+        self.separate_node_blocks = separate
 
     # ---------- CFG building methods ---------- #
     def build(self, name, tree, asynchr=False, entry_id=0):
@@ -175,8 +187,8 @@ class CFGBuilder(ast.NodeVisitor):
         Returns:
             The block to be used as new loop guard.
         """
-        if self.current_block.is_empty() and\
-           len(self.current_block.exits) == 0:
+        if (self.current_block.is_empty() and
+                len(self.current_block.exits) == 0):
             # If the current block is empty and has no exits, it is used as
             # entry block (condition test) for the loop.
             loopguard = self.current_block
@@ -185,7 +197,6 @@ class CFGBuilder(ast.NodeVisitor):
             # isn't empty or has exits.
             loopguard = self.new_block()
             self.add_exit(self.current_block, loopguard)
-
         return loopguard
 
     def new_functionCFG(self, node, asynchr=False):
@@ -251,9 +262,16 @@ class CFGBuilder(ast.NodeVisitor):
                 self.clean_cfg(exit.target, visited)
 
     # ---------- AST Node visitor methods ---------- #
+    def goto_new_block(self, node):
+        if self.separate_node_blocks:
+            newblock = self.new_block()
+            self.add_exit(self.current_block, newblock)
+            self.current_block = newblock
+        self.generic_visit(node)
+
     def visit_Expr(self, node):
         self.add_statement(self.current_block, node)
-        self.generic_visit(node)
+        self.goto_new_block(node)
 
     def visit_Call(self, node):
         def visit_func(node):
@@ -275,15 +293,15 @@ class CFGBuilder(ast.NodeVisitor):
 
     def visit_Assign(self, node):
         self.add_statement(self.current_block, node)
-        self.generic_visit(node)
+        self.goto_new_block(node)
 
     def visit_AnnAssign(self, node):
         self.add_statement(self.current_block, node)
-        self.generic_visit(node)
+        self.goto_new_block(node)
 
     def visit_AugAssign(self, node):
         self.add_statement(self.current_block, node)
-        self.generic_visit(node)
+        self.goto_new_block(node)
 
     def visit_Raise(self, node):
         # TODO
@@ -301,7 +319,7 @@ class CFGBuilder(ast.NodeVisitor):
         successblock = self.new_block()
         self.add_exit(self.current_block, successblock, node.test)
         self.current_block = successblock
-        self.generic_visit(node)
+        self.goto_new_block(node)
 
     def visit_If(self, node):
         # Add the If statement at the end of the current block.
@@ -352,8 +370,7 @@ class CFGBuilder(ast.NodeVisitor):
         self.after_loop_block_stack.append(afterwhile_block)
         inverted_test = invert(node.test)
         # Skip shortcut loop edge if while True:
-        if not (isinstance(inverted_test, ast.NameConstant) and \
-                inverted_test.value == False):
+        if not (isinstance(inverted_test, nameconstant_type) and inverted_test.value is False):
             self.add_exit(self.current_block, afterwhile_block, inverted_test)
 
         # Populate the while block.
@@ -403,7 +420,8 @@ class CFGBuilder(ast.NodeVisitor):
 
     def visit_Continue(self, node):
         assert len(self.curr_loop_guard_stack), "Found continue outside loop"
-        self.add_exit(self.current_block,self.curr_loop_guard_stack[-1])
+        self.add_exit(self.current_block, self.curr_loop_guard_stack[-1])
+
     def visit_Import(self, node):
         self.add_statement(self.current_block, node)
 
@@ -421,7 +439,7 @@ class CFGBuilder(ast.NodeVisitor):
     def visit_Await(self, node):
         afterawait_block = self.new_block()
         self.add_exit(self.current_block, afterawait_block)
-        self.generic_visit(node)
+        self.goto_new_block(node)
         self.current_block = afterawait_block
 
     def visit_Return(self, node):

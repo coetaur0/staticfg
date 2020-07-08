@@ -1,7 +1,7 @@
 import unittest
 import ast
 from staticfg.model import *
-from staticfg.builder import CFGBuilder
+from staticfg.builder import CFGBuilder, is_py38_or_higher
 
 
 class TestBlock(unittest.TestCase):
@@ -26,7 +26,11 @@ class TestBlock(unittest.TestCase):
         self.assertEqual(repr(block), "empty block:1 with 0 exits")
         tree = ast.parse("a = 1")
         block.statements.append(tree.body[0])
-        self.assertEqual(repr(block), "block:1@1 with 0 exits, body=[\
+        if is_py38_or_higher():
+            self.assertEqual(repr(block), "block:1@1 with 0 exits, body=[\
+Assign(targets=[Name(id='a', ctx=Store())], value=Constant(value=1, kind=None), type_comment=None)]")
+        else:
+            self.assertEqual(repr(block), "block:1@1 with 0 exits, body=[\
 Assign(targets=[Name(id='a', ctx=Store())], value=Num(n=1))]")
 
     def test_at(self):
@@ -152,7 +156,6 @@ def foo():
             "while True:\n",
             "i += 1\n"
             "if i == 3:\n",
-            "",
             "for j in range(3):\n",
             "i += j\n"
             "if j == 2:\n",
