@@ -15,6 +15,9 @@ def is_py38_or_higher():
     return False
 
 
+NAMECONSTANT_TYPE = ast.Constant if is_py38_or_higher() else ast.NameConstant
+
+
 def invert(node):
     """
     Invert the operation in an ast node object (get its negation).
@@ -36,8 +39,6 @@ def invert(node):
                ast.In: ast.NotIn,
                ast.NotIn: ast.In}
 
-    nameconstant_type = ast.Constant if is_py38_or_higher() else ast.NameConstant
-
     if type(node) == ast.Compare:
         op = type(node.ops[0])
         inverse_node = ast.Compare(left=node.left, ops=[inverse[op]()],
@@ -45,8 +46,8 @@ def invert(node):
     elif isinstance(node, ast.BinOp) and type(node.op) in inverse:
         op = type(node.op)
         inverse_node = ast.BinOp(node.left, inverse[op](), node.right)
-    elif type(node) == nameconstant_type and node.value in [True, False]:
-        inverse_node = nameconstant_type(value=not node.value)
+    elif type(node) == NAMECONSTANT_TYPE and node.value in [True, False]:
+        inverse_node = NAMECONSTANT_TYPE(value=not node.value)
     else:
         inverse_node = ast.UnaryOp(op=ast.Not(), operand=node)
 
@@ -370,7 +371,8 @@ class CFGBuilder(ast.NodeVisitor):
         self.after_loop_block_stack.append(afterwhile_block)
         inverted_test = invert(node.test)
         # Skip shortcut loop edge if while True:
-        if not (isinstance(inverted_test, nameconstant_type) and inverted_test.value is False):
+        if not (isinstance(inverted_test, NAMECONSTANT_TYPE) and
+                inverted_test.value is False):
             self.add_exit(self.current_block, afterwhile_block, inverted_test)
 
         # Populate the while block.
