@@ -370,7 +370,7 @@ class CFGBuilder(ast.NodeVisitor):
         self.after_loop_block_stack.append(afterwhile_block)
         inverted_test = invert(node.test)
         # Skip shortcut loop edge if while True:
-        if not (isinstance(inverted_test, ast.Constant) and inverted_test.value is False):
+        if not (isinstance(inverted_test, nameconstant_type) and inverted_test.value is False):
             self.add_exit(self.current_block, afterwhile_block, inverted_test)
 
         # Populate the while block.
